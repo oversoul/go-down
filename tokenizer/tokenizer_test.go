@@ -104,7 +104,7 @@ func TestCodeBlockWithLanguage(t *testing.T) {
 	if !tokenValid(tokens[0], CodeBloc, "const msg := \"Hello world\"") {
 		t.Error("Not codeblock token.")
 	}
-	if tokens[0].attributes["language"] != "go" {
+	if tokens[0].Attrs["language"] != "go" {
 		t.Error("Language not detected.")
 	}
 }
