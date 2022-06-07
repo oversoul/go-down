@@ -176,7 +176,23 @@ func parseUnorderedList(lines []string, index int) (*Token, int) {
 }
 
 func parseParagraph(lines []string, index int) (*Token, int) {
-	return nil, 0
+	paraLines := []string{}
+	if isEmpty(lines[index]) {
+		index++
+		for index < len(lines) {
+			if isEmpty(lines[index]) {
+				break
+			} else {
+				paraLines = append(paraLines, lines[index])
+			}
+			index++
+		}
+	}
+	if len(paraLines) == 0 {
+		return nil, 1
+	}
+
+	return newToken(Paragraph, strings.Join(paraLines, "\n")), index - 1
 }
 
 func Tokenize(content string) []*Token {

@@ -33,7 +33,7 @@ func (root *Token) Render() {
 }
 
 func main() {
-	content := "# Welcome to StackEdit!\n\nHi! I'm your first Markdown.\n- first item\n- second item\n"
+	content := "# Welcome to StackEdit!\n\nHi! I'm your first Markdown.\n\n- first item\n- second item\n"
 	tokens := tokenizer.Tokenize(content)
 
 	// for _, token := range tokens {
