@@ -51,11 +51,19 @@ func parseBlocquote(lines []string, index int) ([]*Token, int) {
 	blockLines := []*Token{}
 
 	for index < len(lines) {
-		if !isEmpty(lines[index]) && lines[index][0:2] == "> " {
-			blockLines = append(blockLines, newToken(Blockquote, lines[index][2:]))
-			index++
-			continue
+		if isEmpty(lines[index]) {
+			break
 		}
+		spaces := 0
+		for lines[index][spaces] == ' ' {
+			spaces++
+		}
+
+		if lines[index][spaces:spaces+2] != "> " {
+			break
+		}
+
+		blockLines = append(blockLines, newToken(Blockquote, lines[index][spaces+2:]))
 		index++
 	}
 
@@ -94,7 +102,7 @@ func parseHeading(line string) *Token {
 }
 
 func parseHr(line string) (*Token, int) {
-	if isEmpty(line) {
+	if isEmpty(line) || len(line) < 4 {
 		return nil, 0
 	}
 	if line[0:3] == "---" || line[0:3] == "===" {
@@ -104,7 +112,7 @@ func parseHr(line string) (*Token, int) {
 }
 
 func parseCodeBloc(lines []string, index int) (*Token, int) {
-	if len(strings.TrimSpace(lines[index])) == 0 {
+	if len(lines[index]) < 4 {
 		return nil, 0
 	}
 	if lines[index][0:3] != "```" {
@@ -116,14 +124,14 @@ func parseCodeBloc(lines []string, index int) (*Token, int) {
 	i := index + 1
 	for i < len(lines) {
 		blocLines++
-		if lines[i][0:3] == "```" {
+		if len(lines[i]) > 5 && lines[i][0:3] == "```" {
 			i++
 			break
 		}
 		i++
 	}
 
-	token := newToken(CodeBloc, strings.Join(lines[index+1:blocLines], "\n"))
+	token := newToken(CodeBloc, strings.Join(lines[index+1:index+1+blocLines], "\n"))
 	token.Attrs["language"] = language
 	return token, blocLines
 }
@@ -143,56 +151,43 @@ func parseUnorderedList(lines []string, index int) (*Token, int) {
 	current := list
 	for i < len(lines) {
 		if isEmpty(lines[i]) {
-			i++
-			continue
-		}
-		subI := 0
-		for lines[i][subI] == '\t' {
-			subI++
+			break
 		}
 
-		firstChars := lines[i][subI : subI+2]
+		spaces := 0
+		for lines[i][spaces] == ' ' {
+			spaces++
+		}
 
-		if isList(firstChars) {
-			start := subI
-			for subI > 0 {
-				if current != nil {
-					current = current.Children[len(current.Children)-1]
-				}
-				subI--
+		subI := spaces / 2
+
+		firstChars := lines[i][spaces : spaces+2]
+
+		if !isList(firstChars) {
+			break
+		}
+
+		for subI > 0 {
+			if current != nil && len(current.Children) > 0 {
+				current = current.Children[len(current.Children)-1]
 			}
-			current.Children = append(current.Children, newToken(UnorderedListItem, lines[i][start+2:]))
-			current = list
-			skip++
+			subI--
 		}
+		current.Children = append(current.Children, newToken(UnorderedListItem, lines[i][spaces+2:]))
+		current = list
+		skip++
 		i++
-	}
-
-	if skip == 0 {
-		return nil, 0
 	}
 
 	return list, skip
 }
 
-func parseParagraph(lines []string, index int) (*Token, int) {
-	paraLines := []string{}
-	if isEmpty(lines[index]) {
-		index++
-		for index < len(lines) {
-			if isEmpty(lines[index]) {
-				break
-			} else {
-				paraLines = append(paraLines, lines[index])
-			}
-			index++
-		}
+func isSpecialCharacter(line string) bool {
+	fc := line[0]
+	if fc == '#' || fc == '-' || fc == '\t' || fc == '>' {
+		return true
 	}
-	if len(paraLines) == 0 {
-		return nil, 1
-	}
-
-	return newToken(Paragraph, strings.Join(paraLines, "\n")), index - 1
+	return false
 }
 
 func Tokenize(content string) []*Token {
@@ -207,7 +202,7 @@ func Tokenize(content string) []*Token {
 
 		if token := parseHeading(lines[i]); token != nil {
 			tokens = append(tokens, token)
-			i++
+			i += 2
 		}
 
 		if token, skip := parseCodeBloc(lines, i); token != nil {
@@ -220,7 +215,7 @@ func Tokenize(content string) []*Token {
 			i += skip
 		}
 
-		if token, skip := parseUnorderedList(lines, i); token != nil {
+		if token, skip := parseUnorderedList(lines, i); skip > 0 {
 			tokens = append(tokens, token)
 			i += skip
 		}
@@ -228,12 +223,9 @@ func Tokenize(content string) []*Token {
 		// parse_ordered_list
 		// parse_link_reference
 
-		if token, skip := parseParagraph(lines, i); token != nil {
-			tokens = append(tokens, token)
-			i += skip
+		if !isEmpty(lines[i]) {
+			tokens = append(tokens, newToken(Paragraph, lines[i]))
 		}
-		// tokens = append(tokens, newToken(Paragraph, lines[i]))
-
 		i++
 	}
 	return tokens

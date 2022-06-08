@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"os"
 	"oversoul/godown/tokenizer"
 )
 
@@ -33,8 +34,12 @@ func (root *Token) Render() {
 }
 
 func main() {
-	content := "# Welcome to StackEdit!\n\nHi! I'm your first Markdown.\n\n- first item\n- second item\n"
-	tokens := tokenizer.Tokenize(content)
+	// content := "# Welcome to StackEdit!\n\nHi! I'm your first Markdown.\n\n- first item\n- second item\n"
+	content, err := os.ReadFile("example.md")
+	if err != nil {
+		panic(err)
+	}
+	tokens := tokenizer.Tokenize(string(content))
 
 	// for _, token := range tokens {
 	// 	t := Token{token}
@@ -45,5 +50,7 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
+
+	// _ = data
 	fmt.Println(string(data))
 }
