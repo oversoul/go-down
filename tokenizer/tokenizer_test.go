@@ -78,8 +78,11 @@ func TestHeadingLevel6(t *testing.T) {
 func TestHeadingIgnoredIfSpaceDoesntFollowAfterHash(t *testing.T) {
 	tokens := Tokenize("###Hello world")
 
-	if len(tokens) > 0 {
-		t.Error("Should not be able to parse.")
+	if len(tokens) != 1 {
+		t.Fail()
+	}
+	if !tokenValid(tokens[0], Paragraph, "###Hello world") {
+		t.Error("Should not be able to parse header.")
 	}
 }
 
@@ -153,7 +156,13 @@ func TestUnorederList(t *testing.T) {
 }
 
 func TestNestedUnorederList(t *testing.T) {
-	tokens := Tokenize("- First item\n- Second item\n- Third item\n\t- Indented item\n\t- Indented item\n- Fourth item")
+	tokens := Tokenize(`
+- First item
+- Second item
+- Third item
+  - Indented item
+  - Indented item
+- Fourth item`)
 
 	if len(tokens) < 1 {
 		t.Error("Not enough tokens")
@@ -165,5 +174,29 @@ func TestNestedUnorederList(t *testing.T) {
 	value := tokens[0].Children[2].Children[0].Value
 	if value != "Indented item" {
 		t.Errorf("Not valid indented unordered list item. `%s`", value)
+	}
+}
+
+func TestSimpleCodeBloc(t *testing.T) {
+	tokens := Tokenize("* Winter\n  ```jsx\n  const Snow = <Snowflake amount=20 />;\n  ```\n* Frost")
+
+	if len(tokens) < 1 {
+		t.Error("Not enough tokens")
+	}
+
+	if !tokenValid(tokens[0], UnorderedList, "") {
+		t.Error("Not valid UnorderedList")
+	}
+
+	if tokens[0].Children[0].Value != "Winter" {
+		t.Error("Not valid UnorderedListItem Winter")
+	}
+
+	if tokens[0].Children[0].Children[0].Ttype != CodeBloc {
+		t.Error("Not valid CodeBloc")
+	}
+
+	if tokens[0].Children[1].Value != "Frost" {
+		t.Error("Not valid UnorderedListItem Frost")
 	}
 }

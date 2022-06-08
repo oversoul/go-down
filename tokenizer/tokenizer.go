@@ -111,29 +111,29 @@ func parseHr(line string) (*Token, int) {
 	return nil, 0
 }
 
-func parseCodeBloc(lines []string, index int) (*Token, int) {
-	if len(lines[index]) < 4 {
+func parseCodeBloc(lines []string, index int, spaces int) (*Token, int) {
+	if len(lines[index]) < 4+spaces {
 		return nil, 0
 	}
-	if lines[index][0:3] != "```" {
+	if lines[index][spaces:spaces+3] != "```" {
 		return nil, 0
 	}
 
-	language := strings.TrimSpace(lines[index][3:])
-	blocLines := 0
+	language := strings.TrimSpace(lines[index][spaces+3:])
+	blocLines := []string{}
 	i := index + 1
 	for i < len(lines) {
-		if len(lines[i]) >= 3 && lines[i][0:3] == "```" {
-			blocLines++
+		if len(lines[i]) >= 3 && lines[i][spaces:spaces+3] == "```" {
 			break
 		}
-		blocLines++
+		blocLines = append(blocLines, strings.TrimSpace(lines[i]))
 		i++
 	}
 
-	token := newToken(CodeBloc, strings.Join(lines[index+1:index+blocLines], "\n"))
+	token := newToken(CodeBloc, strings.Join(blocLines, "\n"))
+
 	token.Attrs["language"] = language
-	return token, blocLines + 1
+	return token, len(blocLines) + 2
 }
 
 func parseUnorderedList(lines []string, index int) (*Token, int) {
@@ -163,7 +163,7 @@ func parseUnorderedList(lines []string, index int) (*Token, int) {
 
 		firstChars := lines[i][spaces : spaces+2]
 
-		if !isList(firstChars) {
+		if !isList(firstChars) && spaces == 0 {
 			break
 		}
 
@@ -173,10 +173,21 @@ func parseUnorderedList(lines []string, index int) (*Token, int) {
 			}
 			subI--
 		}
-		current.Children = append(current.Children, newToken(UnorderedListItem, lines[i][spaces+2:]))
+
+		skip_value := 1
+		inc_value := 1
+
+		if token, skip_bloc := parseCodeBloc(lines, i, spaces); token != nil {
+			current.Children = append(current.Children, token)
+			inc_value = skip_bloc
+			skip_value = skip_bloc
+		} else {
+			current.Children = append(current.Children, newToken(UnorderedListItem, lines[i][spaces+2:]))
+		}
+
 		current = list
-		skip++
-		i++
+		skip += skip_value
+		i += inc_value
 	}
 
 	return list, skip
@@ -198,14 +209,16 @@ func Tokenize(content string) []*Token {
 		if token, skip := parseHr(lines[i]); token != nil {
 			tokens = append(tokens, token)
 			i += skip
+			continue
 		}
 
 		if token := parseHeading(lines[i]); token != nil {
 			tokens = append(tokens, token)
 			i += 2
+			continue
 		}
 
-		if token, skip := parseCodeBloc(lines, i); token != nil {
+		if token, skip := parseCodeBloc(lines, i, 0); token != nil {
 			tokens = append(tokens, token)
 			i += skip
 			continue
@@ -214,11 +227,13 @@ func Tokenize(content string) []*Token {
 		if blocks, skip := parseBlocquote(lines, i); len(blocks) > 0 {
 			tokens = append(tokens, blocks...)
 			i += skip
+			continue
 		}
 
 		if token, skip := parseUnorderedList(lines, i); skip > 0 {
 			tokens = append(tokens, token)
 			i += skip
+			continue
 		}
 
 		// parse_ordered_list
