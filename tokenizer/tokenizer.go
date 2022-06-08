@@ -174,15 +174,25 @@ func parseUnorderedList(lines []string, index int) (*Token, int) {
 			subI--
 		}
 
-		skip_value := 1
 		inc_value := 1
+		skip_value := 1
 
 		if token, skip_bloc := parseCodeBloc(lines, i, spaces); token != nil {
 			current.Children = append(current.Children, token)
 			inc_value = skip_bloc
 			skip_value = skip_bloc
 		} else {
-			current.Children = append(current.Children, newToken(UnorderedListItem, lines[i][spaces+2:]))
+			if isList(firstChars) {
+				current.Children = append(
+					current.Children,
+					newToken(UnorderedListItem, lines[i][spaces+2:]),
+				)
+			} else {
+				current.Children = append(
+					current.Children,
+					newToken(Paragraph, lines[i][spaces:]),
+				)
+			}
 		}
 
 		current = list
@@ -191,14 +201,6 @@ func parseUnorderedList(lines []string, index int) (*Token, int) {
 	}
 
 	return list, skip
-}
-
-func isSpecialCharacter(line string) bool {
-	fc := line[0]
-	if fc == '#' || fc == '-' || fc == '\t' || fc == '>' {
-		return true
-	}
-	return false
 }
 
 func Tokenize(content string) []*Token {
@@ -242,6 +244,7 @@ func Tokenize(content string) []*Token {
 		if i >= len(lines) {
 			break
 		}
+
 		if !isEmpty(lines[i]) {
 			tokens = append(tokens, newToken(Paragraph, lines[i]))
 		}

@@ -177,7 +177,7 @@ func TestNestedUnorederList(t *testing.T) {
 	}
 }
 
-func TestSimpleCodeBloc(t *testing.T) {
+func TestSimpleCodeBlocWithinUnorderedList(t *testing.T) {
 	tokens := Tokenize("* Winter\n  ```jsx\n  const Snow = <Snowflake amount=20 />;\n  ```\n* Frost")
 
 	if len(tokens) < 1 {
@@ -198,5 +198,25 @@ func TestSimpleCodeBloc(t *testing.T) {
 
 	if tokens[0].Children[1].Value != "Frost" {
 		t.Error("Not valid UnorderedListItem Frost")
+	}
+}
+
+func TestParagraphWithinUnorderedList(t *testing.T) {
+	tokens := Tokenize("* Winter\n* Frost\n  hello")
+
+	if len(tokens) < 1 {
+		t.Error("Not enough tokens")
+	}
+	if !tokenValid(tokens[0], UnorderedList, "") {
+		t.Error("Not valid UnorderedList")
+	}
+	if tokens[0].Children[0].Value != "Winter" {
+		t.Error("Not valid UnorderedListItem Winter")
+	}
+	if tokens[0].Children[1].Value != "Frost" {
+		t.Error("Not valid UnorderedListItem Frost")
+	}
+	if tokens[0].Children[1].Children[0].Ttype != Paragraph {
+		t.Error("Not valid Paragraph")
 	}
 }
