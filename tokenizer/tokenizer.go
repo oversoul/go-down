@@ -123,17 +123,17 @@ func parseCodeBloc(lines []string, index int) (*Token, int) {
 	blocLines := 0
 	i := index + 1
 	for i < len(lines) {
-		blocLines++
-		if len(lines[i]) > 5 && lines[i][0:3] == "```" {
-			i++
+		if len(lines[i]) >= 3 && lines[i][0:3] == "```" {
+			blocLines++
 			break
 		}
+		blocLines++
 		i++
 	}
 
-	token := newToken(CodeBloc, strings.Join(lines[index+1:index+1+blocLines], "\n"))
+	token := newToken(CodeBloc, strings.Join(lines[index+1:index+blocLines], "\n"))
 	token.Attrs["language"] = language
-	return token, blocLines
+	return token, blocLines + 1
 }
 
 func parseUnorderedList(lines []string, index int) (*Token, int) {
@@ -208,6 +208,7 @@ func Tokenize(content string) []*Token {
 		if token, skip := parseCodeBloc(lines, i); token != nil {
 			tokens = append(tokens, token)
 			i += skip
+			continue
 		}
 
 		if blocks, skip := parseBlocquote(lines, i); len(blocks) > 0 {
@@ -223,9 +224,13 @@ func Tokenize(content string) []*Token {
 		// parse_ordered_list
 		// parse_link_reference
 
+		if i >= len(lines) {
+			break
+		}
 		if !isEmpty(lines[i]) {
 			tokens = append(tokens, newToken(Paragraph, lines[i]))
 		}
+
 		i++
 	}
 	return tokens
