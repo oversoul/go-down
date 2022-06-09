@@ -1,6 +1,7 @@
 package tokenizer
 
 import (
+	"strconv"
 	"strings"
 )
 
@@ -19,6 +20,8 @@ const (
 	Blockquote                  = "Blockquote"
 	UnorderedList               = "UnorderedList"
 	UnorderedListItem           = "UnorderedListItem"
+	OrderedList                 = "OrderedList"
+	OrderedListItem             = "OrderedListItem"
 )
 
 type Attribute map[string]any
@@ -47,6 +50,14 @@ func isEmpty(line string) bool {
 	return len(strings.TrimSpace(line)) == 0
 }
 
+func countSpaces(line string) int {
+	spaces := 0
+	for line[spaces] == ' ' {
+		spaces++
+	}
+	return spaces
+}
+
 func parseBlocquote(lines []string, index int) ([]*Token, int) {
 	if isEmpty(lines[index]) {
 		return nil, 0
@@ -58,10 +69,8 @@ func parseBlocquote(lines []string, index int) ([]*Token, int) {
 		if isEmpty(lines[index]) {
 			break
 		}
-		spaces := 0
-		for lines[index][spaces] == ' ' {
-			spaces++
-		}
+
+		spaces := countSpaces(lines[index])
 
 		if lines[index][spaces:spaces+2] != "> " {
 			break
@@ -149,23 +158,19 @@ func parseUnorderedList(lines []string, index int) (*Token, int) {
 		return line == "- " || line == "+ " || line == "* "
 	}
 
-	i := index
 	skip := 0
 	list := newToken(UnorderedList, "")
 	current := list
-	for i < len(lines) {
-		if isEmpty(lines[i]) {
+	for index < len(lines) {
+		if isEmpty(lines[index]) {
 			break
 		}
 
-		spaces := 0
-		for lines[i][spaces] == ' ' {
-			spaces++
-		}
+		spaces := countSpaces(lines[index])
 
 		subI := spaces / 2
 
-		firstChars := lines[i][spaces : spaces+2]
+		firstChars := lines[index][spaces : spaces+2]
 
 		if !isList(firstChars) && spaces == 0 {
 			break
@@ -181,7 +186,7 @@ func parseUnorderedList(lines []string, index int) (*Token, int) {
 		inc_value := 1
 		skip_value := 1
 
-		if token, skip_bloc := parseCodeBloc(lines, i, spaces); token != nil {
+		if token, skip_bloc := parseCodeBloc(lines, index, spaces); token != nil {
 			current.Children = append(current.Children, token)
 			inc_value = skip_bloc
 			skip_value = skip_bloc
@@ -189,19 +194,54 @@ func parseUnorderedList(lines []string, index int) (*Token, int) {
 			if isList(firstChars) {
 				current.Children = append(
 					current.Children,
-					newToken(UnorderedListItem, lines[i][spaces+2:]),
+					newToken(UnorderedListItem, lines[index][spaces+2:]),
 				)
 			} else {
 				current.Children = append(
 					current.Children,
-					newToken(Paragraph, lines[i][spaces:]),
+					newToken(Paragraph, lines[index][spaces:]),
 				)
 			}
 		}
 
 		current = list
 		skip += skip_value
-		i += inc_value
+		index += inc_value
+	}
+
+	return list, skip
+}
+
+func parseOrderedList(lines []string, index int) (*Token, int) {
+	if isEmpty(lines[index]) {
+		return nil, 0
+	}
+
+	skip := 0
+	list := newToken(OrderedList, "")
+	current := list
+	for index < len(lines) {
+		if isEmpty(lines[index]) {
+			break
+		}
+
+		spaces := countSpaces(lines[index])
+
+		// subI := spaces / 2
+
+		slices := strings.SplitN(lines[index][spaces:], ". ", 2)
+
+		_, err := strconv.Atoi(slices[0])
+		if err != nil && spaces == 0 {
+			break
+		}
+
+		current.Children = append(
+			current.Children,
+			newToken(OrderedListItem, slices[1]),
+		)
+		skip += 1
+		index += 1
 	}
 
 	return list, skip
@@ -242,7 +282,12 @@ func Tokenize(content string) []*Token {
 			continue
 		}
 
-		// parse_ordered_list
+		if token, skip := parseOrderedList(lines, i); skip > 0 {
+			tokens = append(tokens, token)
+			i += skip
+			continue
+		}
+
 		// parse_link_reference
 
 		if i >= len(lines) {

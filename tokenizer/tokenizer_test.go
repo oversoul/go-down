@@ -220,3 +220,23 @@ func TestParagraphWithinUnorderedList(t *testing.T) {
 		t.Error("Not valid Paragraph")
 	}
 }
+
+func TestOrderedList(t *testing.T) {
+	tokens := Tokenize("1. First item\n2. Second item\n")
+
+	if len(tokens) < 1 {
+		t.Error("Not enough tokens")
+	}
+
+	if !tokenValid(tokens[0], OrderedList, "") {
+		t.Error("Not valid OrderedList")
+	}
+	value := tokens[0].Children[0].Value
+	if value != "First item" {
+		t.Errorf("Not valid item. `%s`", value)
+	}
+	value = tokens[0].Children[1].Value
+	if value != "Second item" {
+		t.Errorf("Not valid item. `%s`", value)
+	}
+}
