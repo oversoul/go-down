@@ -9,7 +9,7 @@ func tokenValid(t *Token, ttype TokenType, value string) bool {
 }
 
 func TestHeadingLevel1(t *testing.T) {
-	tokens := Tokenize("# Hello world")
+	tokens := NewParser("# Hello world").Tokenize()
 
 	if len(tokens) < 1 {
 		t.Error("No tokens.")
@@ -20,7 +20,7 @@ func TestHeadingLevel1(t *testing.T) {
 }
 
 func TestHeadingLevel2(t *testing.T) {
-	tokens := Tokenize("## Hello world")
+	tokens := NewParser("## Hello world").Tokenize()
 
 	if len(tokens) != 1 {
 		t.Fail()
@@ -31,7 +31,7 @@ func TestHeadingLevel2(t *testing.T) {
 }
 
 func TestHeadingLevel3(t *testing.T) {
-	tokens := Tokenize("### Hello world")
+	tokens := NewParser("### Hello world").Tokenize()
 
 	if len(tokens) != 1 {
 		t.Fail()
@@ -42,7 +42,7 @@ func TestHeadingLevel3(t *testing.T) {
 }
 
 func TestHeadingLevel4(t *testing.T) {
-	tokens := Tokenize("#### Hello world")
+	tokens := NewParser("#### Hello world").Tokenize()
 
 	if len(tokens) != 1 {
 		t.Fail()
@@ -53,7 +53,7 @@ func TestHeadingLevel4(t *testing.T) {
 }
 
 func TestHeadingLevel5(t *testing.T) {
-	tokens := Tokenize("##### Hello world")
+	tokens := NewParser("##### Hello world").Tokenize()
 
 	if len(tokens) != 1 {
 		t.Fail()
@@ -64,7 +64,7 @@ func TestHeadingLevel5(t *testing.T) {
 }
 
 func TestHeadingLevel6(t *testing.T) {
-	tokens := Tokenize("###### Hello world")
+	tokens := NewParser("###### Hello world").Tokenize()
 
 	if len(tokens) != 1 {
 		t.Fail()
@@ -76,7 +76,7 @@ func TestHeadingLevel6(t *testing.T) {
 }
 
 func TestHeadingIgnoredIfSpaceDoesntFollowAfterHash(t *testing.T) {
-	tokens := Tokenize("###Hello world")
+	tokens := NewParser("###Hello world").Tokenize()
 
 	if len(tokens) != 1 {
 		t.Fail()
@@ -87,7 +87,7 @@ func TestHeadingIgnoredIfSpaceDoesntFollowAfterHash(t *testing.T) {
 }
 
 func TestCodeBlock(t *testing.T) {
-	tokens := Tokenize("```text\nHello world\n```")
+	tokens := NewParser("```text\nHello world\n```").Tokenize()
 
 	if len(tokens) != 1 {
 		t.Fail()
@@ -99,7 +99,7 @@ func TestCodeBlock(t *testing.T) {
 }
 
 func TestCodeBlockWithLanguage(t *testing.T) {
-	tokens := Tokenize("```go\nconst msg := \"Hello world\"\n```")
+	tokens := NewParser("```go\nconst msg := \"Hello world\"\n```").Tokenize()
 
 	if len(tokens) < 1 {
 		t.Error("no tokens")
@@ -113,7 +113,7 @@ func TestCodeBlockWithLanguage(t *testing.T) {
 }
 
 func TestBlocquote(t *testing.T) {
-	tokens := Tokenize("> Hello world")
+	tokens := NewParser("> Hello world").Tokenize()
 
 	if len(tokens) < 1 {
 		t.Error("Not enough tokens")
@@ -124,7 +124,7 @@ func TestBlocquote(t *testing.T) {
 }
 
 func TestBlocquoteMultipleLines(t *testing.T) {
-	tokens := Tokenize("> Hello world\n> Something else")
+	tokens := NewParser("> Hello world\n> Something else").Tokenize()
 
 	if len(tokens) < 1 {
 		t.Error("Not enough tokens")
@@ -136,7 +136,7 @@ func TestBlocquoteMultipleLines(t *testing.T) {
 }
 
 func TestUnorederList(t *testing.T) {
-	tokens := Tokenize("- First item\n- Second item\n- Third item\n- Fourth item")
+	tokens := NewParser("- First item\n- Second item\n- Third item\n- Fourth item").Tokenize()
 
 	if len(tokens) < 1 {
 		t.Error("Not enough tokens")
@@ -156,13 +156,13 @@ func TestUnorederList(t *testing.T) {
 }
 
 func TestNestedUnorederList(t *testing.T) {
-	tokens := Tokenize(`
+	tokens := NewParser(`
 - First item
 - Second item
 - Third item
   - Indented item
   - Indented item
-- Fourth item`)
+- Fourth item`).Tokenize()
 
 	if len(tokens) < 1 {
 		t.Error("Not enough tokens")
@@ -177,7 +177,7 @@ func TestNestedUnorederList(t *testing.T) {
 }
 
 func TestSimpleCodeBlocWithinUnorderedList(t *testing.T) {
-	tokens := Tokenize("* Winter\n  ```jsx\n  const Snow = <Snowflake amount=20 />;\n  ```\n* Frost")
+	tokens := NewParser("* Winter\n  ```jsx\n  const Snow = <Snowflake amount=20 />;\n  ```\n* Frost").Tokenize()
 
 	if len(tokens) < 1 {
 		t.Error("Not enough tokens")
@@ -201,7 +201,7 @@ func TestSimpleCodeBlocWithinUnorderedList(t *testing.T) {
 }
 
 func TestParagraphWithinUnorderedList(t *testing.T) {
-	tokens := Tokenize("* Winter\n* Frost\n  hello")
+	tokens := NewParser("* Winter\n* Frost\n  hello").Tokenize()
 
 	if len(tokens) < 1 {
 		t.Error("Not enough tokens")
@@ -221,7 +221,7 @@ func TestParagraphWithinUnorderedList(t *testing.T) {
 }
 
 func TestOrderedList(t *testing.T) {
-	tokens := Tokenize("1. First item\n2. Second item\n")
+	tokens := NewParser("1. First item\n2. Second item\n").Tokenize()
 
 	if len(tokens) < 1 {
 		t.Error("Not enough tokens")

@@ -39,7 +39,7 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	tokens := tokenizer.Tokenize(string(content))
+	tokens := tokenizer.NewParser(string(content)).Tokenize()
 
 	// for _, token := range tokens {
 	// 	t := Token{token}
