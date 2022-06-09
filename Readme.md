@@ -13,3 +13,4 @@ it's able to parse only block elements:
 - Blockquote
 - Horizontal line
 - Unordered List
+- Ordered List (1 level only.)
