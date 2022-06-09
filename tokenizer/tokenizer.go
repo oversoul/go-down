@@ -83,9 +83,9 @@ func parseBlocquote(lines []string, index int) ([]*Token, int) {
 	return blockLines, len(blockLines)
 }
 
-func parseHeading(line string) *Token {
+func parseHeading(line string) ([]*Token, int) {
 	if isEmpty(line) {
-		return nil
+		return nil, 0
 	}
 	i := 0
 	for line[i] == '#' {
@@ -93,25 +93,29 @@ func parseHeading(line string) *Token {
 	}
 
 	if line[i] != ' ' {
-		return nil
+		return nil, 0
 	}
+
+	var ttype TokenType
 
 	switch i {
 	case 1:
-		return newToken(Heading1, line[i+1:])
+		ttype = Heading1
 	case 2:
-		return newToken(Heading2, line[i+1:])
+		ttype = Heading2
 	case 3:
-		return newToken(Heading3, line[i+1:])
+		ttype = Heading3
 	case 4:
-		return newToken(Heading4, line[i+1:])
+		ttype = Heading4
 	case 5:
-		return newToken(Heading5, line[i+1:])
+		ttype = Heading5
 	case 6:
-		return newToken(Heading6, line[i+1:])
+		ttype = Heading6
 	default:
-		return nil
+		return nil, 0
 	}
+
+	return []*Token{newToken(ttype, line[i+1:])}, 1
 }
 
 func parseHr(line string) (*Token, int) {
@@ -124,7 +128,7 @@ func parseHr(line string) (*Token, int) {
 	return nil, 0
 }
 
-func parseCodeBloc(lines []string, index int, spaces int) (*Token, int) {
+func parseCodeBloc(lines []string, index int, spaces int) ([]*Token, int) {
 	if len(lines[index]) < 4+spaces {
 		return nil, 0
 	}
@@ -146,10 +150,10 @@ func parseCodeBloc(lines []string, index int, spaces int) (*Token, int) {
 	token := newToken(CodeBloc, strings.Join(blocLines, "\n"))
 
 	token.Attrs["language"] = language
-	return token, len(blocLines) + 2
+	return []*Token{token}, len(blocLines) + 2
 }
 
-func parseUnorderedList(lines []string, index int) (*Token, int) {
+func parseUnorderedList(lines []string, index int) ([]*Token, int) {
 	if isEmpty(lines[index]) {
 		return nil, 0
 	}
@@ -186,8 +190,8 @@ func parseUnorderedList(lines []string, index int) (*Token, int) {
 		inc_value := 1
 		skip_value := 1
 
-		if token, skip_bloc := parseCodeBloc(lines, index, spaces); token != nil {
-			current.Children = append(current.Children, token)
+		if tokens, skip_bloc := parseCodeBloc(lines, index, spaces); tokens != nil {
+			current.Children = append(current.Children, tokens...)
 			inc_value = skip_bloc
 			skip_value = skip_bloc
 		} else {
@@ -209,10 +213,10 @@ func parseUnorderedList(lines []string, index int) (*Token, int) {
 		index += inc_value
 	}
 
-	return list, skip
+	return []*Token{list}, skip
 }
 
-func parseOrderedList(lines []string, index int) (*Token, int) {
+func parseOrderedList(lines []string, index int) ([]*Token, int) {
 	if isEmpty(lines[index]) {
 		return nil, 0
 	}
@@ -226,9 +230,6 @@ func parseOrderedList(lines []string, index int) (*Token, int) {
 		}
 
 		spaces := countSpaces(lines[index])
-
-		// subI := spaces / 2
-
 		slices := strings.SplitN(lines[index][spaces:], ". ", 2)
 
 		_, err := strconv.Atoi(slices[0])
@@ -244,7 +245,7 @@ func parseOrderedList(lines []string, index int) (*Token, int) {
 		index += 1
 	}
 
-	return list, skip
+	return []*Token{list}, skip
 }
 
 func Tokenize(content string) []*Token {
@@ -258,37 +259,35 @@ func Tokenize(content string) []*Token {
 			continue
 		}
 
-		if token := parseHeading(lines[i]); token != nil {
-			tokens = append(tokens, token)
-			i += 2
-			continue
-		}
-
-		if token, skip := parseCodeBloc(lines, i, 0); token != nil {
-			tokens = append(tokens, token)
-			i += skip
-			continue
-		}
-
-		if blocks, skip := parseBlocquote(lines, i); len(blocks) > 0 {
+		if blocks, skip := parseHeading(lines[i]); skip > 0 {
 			tokens = append(tokens, blocks...)
 			i += skip
 			continue
 		}
 
-		if token, skip := parseUnorderedList(lines, i); skip > 0 {
-			tokens = append(tokens, token)
+		if blocks, skip := parseCodeBloc(lines, i, 0); skip > 0 {
+			tokens = append(tokens, blocks...)
 			i += skip
 			continue
 		}
 
-		if token, skip := parseOrderedList(lines, i); skip > 0 {
-			tokens = append(tokens, token)
+		if blocks, skip := parseBlocquote(lines, i); skip > 0 {
+			tokens = append(tokens, blocks...)
 			i += skip
 			continue
 		}
 
-		// parse_link_reference
+		if blocks, skip := parseUnorderedList(lines, i); skip > 0 {
+			tokens = append(tokens, blocks...)
+			i += skip
+			continue
+		}
+
+		if blocks, skip := parseOrderedList(lines, i); skip > 0 {
+			tokens = append(tokens, blocks...)
+			i += skip
+			continue
+		}
 
 		if i >= len(lines) {
 			break
