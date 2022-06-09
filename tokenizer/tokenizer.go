@@ -24,7 +24,6 @@ const (
 type Attribute map[string]any
 
 type Token struct {
-	parent   *Token
 	Ttype    TokenType `json:"type"`
 	Value    string    `json:"value"`
 	Children []*Token  `json:"children"`
@@ -36,7 +35,12 @@ type Renderable interface {
 }
 
 func newToken(ttype TokenType, value string) *Token {
-	return &Token{Ttype: ttype, Value: value, Children: []*Token{}, Attrs: Attribute{}}
+	return &Token{
+		Ttype:    ttype,
+		Value:    value,
+		Attrs:    Attribute{},
+		Children: []*Token{},
+	}
 }
 
 func isEmpty(line string) bool {
