@@ -115,10 +115,10 @@ func parseHeading(line string) *Token {
 }
 
 func parseHr(line string) (*Token, int) {
-	if isEmpty(line) || len(line) < 4 {
+	if isEmpty(line) {
 		return nil, 0
 	}
-	if line[0:3] == "---" || line[0:3] == "===" {
+	if line == "---" || line == "===" {
 		return newToken(Hr, ""), 1
 	}
 	return nil, 0
@@ -236,10 +236,10 @@ func parseOrderedList(lines []string, index int) (*Token, int) {
 			break
 		}
 
-		current.Children = append(
-			current.Children,
-			newToken(OrderedListItem, slices[1]),
-		)
+		token := newToken(OrderedListItem, slices[1])
+		token.Attrs["id"] = skip + 1
+
+		current.Children = append(current.Children, token)
 		skip += 1
 		index += 1
 	}

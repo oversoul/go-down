@@ -227,16 +227,34 @@ func TestOrderedList(t *testing.T) {
 	if len(tokens) < 1 {
 		t.Error("Not enough tokens")
 	}
-
 	if !tokenValid(tokens[0], OrderedList, "") {
 		t.Error("Not valid OrderedList")
 	}
-	value := tokens[0].Children[0].Value
-	if value != "First item" {
-		t.Errorf("Not valid item. `%s`", value)
+	item := tokens[0].Children[0]
+	if item.Value != "First item" || item.Attrs["id"] != 1 {
+		t.Errorf("Not valid item. `%s`", item.Value)
 	}
-	value = tokens[0].Children[1].Value
-	if value != "Second item" {
-		t.Errorf("Not valid item. `%s`", value)
+	item = tokens[0].Children[1]
+	if item.Value != "Second item" || item.Attrs["id"] != 2 {
+		t.Errorf("Not valid item. `%s`", item.Value)
 	}
 }
+
+// func TestOrderedListWithSubItems(t *testing.T) {
+// 	tokens := Tokenize("1. First item\n  1.1 \n2. Second item\n")
+
+// 	if len(tokens) < 1 {
+// 		t.Error("Not enough tokens")
+// 	}
+// 	if !tokenValid(tokens[0], OrderedList, "") {
+// 		t.Error("Not valid OrderedList")
+// 	}
+// 	value := tokens[0].Children[0].Value
+// 	if value != "First item" {
+// 		t.Errorf("Not valid item. `%s`", value)
+// 	}
+// 	value = tokens[0].Children[1].Value
+// 	if value != "Second item" {
+// 		t.Errorf("Not valid item. `%s`", value)
+// 	}
+// }
