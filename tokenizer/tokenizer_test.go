@@ -239,6 +239,7 @@ func TestOrderedList(t *testing.T) {
 	}
 }
 
+/*
 func TestSpanParserForBold(t *testing.T) {
 	token := parseSpans("Hello **world**")
 
@@ -321,5 +322,188 @@ func TestSpanParserForWrongItalicUndercore(t *testing.T) {
 	}
 	if !tokenValid(token.Children[0], TextNormal, "Hello _world") {
 		t.Error("Not valid Text normal")
+	}
+}
+
+func TestMultipleSpans(t *testing.T) {
+	token := parseSpans("Hello **world _of_**")
+	if len(token.Children) < 1 {
+		t.Error("Not enough tokens")
+	}
+	fmt.Println(token.Children[1])
+	if !tokenValid(token.Children[0], TextNormal, "Hello ") {
+		t.Error("Not valid Text normal")
+	}
+}
+*/
+
+func TestSpanSimpleText(t *testing.T) {
+	spans := parseSpans("world")
+
+	if len(spans) == 0 {
+		t.Error("Not enough spans.")
+	}
+	if spans[0].ttype != "normal" {
+		t.Error("Span should be normal type.")
+	}
+	if spans[0].value != "world" {
+		t.Errorf("Span value should be `world` == `%s`.", spans[0].value)
+	}
+}
+
+func TestSpanSimpleTextBold(t *testing.T) {
+	spans := parseSpans("world *hello*")
+	if len(spans) < 2 {
+		t.Error("Not enough spans.")
+	}
+	if spans[0].ttype != "normal" || spans[0].value != "world " {
+		t.Error("Span should be normal type of value world.")
+	}
+	if spans[1].ttype != "italic" {
+		t.Error("Span should be italic")
+	}
+	if spans[2].ttype != "normal" || spans[2].value != "hello" {
+		t.Error("Span should be normal with value hello")
+	}
+}
+
+func TestParseLink(t *testing.T) {
+	spans := parseSpans("[example](https://example.com)")
+	if len(spans) < 2 {
+		t.Errorf("Not enough spans. %d", len(spans))
+	}
+	span := spans[0]
+	if span.ttype != "link-txt" || span.value != "example" {
+		t.Error("Not finding alt text of link.")
+		return
+	}
+	span = spans[1]
+	if span.ttype != "link-url" || span.value != "https://example.com" {
+		t.Error("Not finding url of link.")
+		return
+	}
+}
+
+func TestParseTwoLinks(t *testing.T) {
+	spans := parseSpans("[example](https://example.com)[example](https://example.com)")
+	if len(spans) < 4 {
+		t.Errorf("Not enough spans. %d", len(spans))
+	}
+
+	values := []span{
+		{"example", "link-txt"},
+		{"https://example.com", "link-url"},
+		{"example", "link-txt"},
+		{"https://example.com", "link-url"},
+	}
+
+	for i, span := range spans {
+		if span.ttype != values[i].ttype || span.value != values[i].value {
+			t.Errorf("Span not correct %s", span)
+			return
+		}
+	}
+}
+
+func TestParseTwoLinksWithSpace(t *testing.T) {
+	spans := parseSpans("[example](https://example.com) [example](https://example.com)")
+	if len(spans) < 5 {
+		t.Errorf("Not enough spans. %d", len(spans))
+	}
+
+	values := []span{
+		{"example", "link-txt"},
+		{"https://example.com", "link-url"},
+		{" ", "normal"},
+		{"example", "link-txt"},
+		{"https://example.com", "link-url"},
+	}
+
+	for i, span := range spans {
+		if span.ttype != values[i].ttype || span.value != values[i].value {
+			t.Errorf("Span not correct %s", span)
+			return
+		}
+	}
+}
+
+func TestParseTwoImages(t *testing.T) {
+	spans := parseSpans("![example](https://example.com)![example](https://example.com)")
+	if len(spans) < 4 {
+		t.Errorf("Not enough spans. %d", len(spans))
+	}
+
+	values := []span{
+		{"example", "img-alt"},
+		{"https://example.com", "img-src"},
+		{"example", "img-alt"},
+		{"https://example.com", "img-src"},
+	}
+
+	for i, span := range spans {
+		if span.ttype != values[i].ttype || span.value != values[i].value {
+			t.Errorf("Span not correct %s", span)
+			return
+		}
+	}
+}
+
+func TestParseTwoImgsWithSpace(t *testing.T) {
+	spans := parseSpans("![example](https://example.com) ![example](https://example.com)")
+	if len(spans) < 5 {
+		t.Errorf("Not enough spans. %d", len(spans))
+	}
+
+	values := []span{
+		{"example", "img-alt"},
+		{"https://example.com", "img-src"},
+		{" ", "normal"},
+		{"example", "img-alt"},
+		{"https://example.com", "img-src"},
+	}
+
+	for i, span := range spans {
+		if span.ttype != values[i].ttype || span.value != values[i].value {
+			t.Errorf("Span not correct %s", span)
+			return
+		}
+	}
+}
+
+func TestSpanParseMultipleSpans(t *testing.T) {
+	spans := parseSpans("*world **hello*** ![world](https://example.com/img.jpg) [example](https://example.com)")
+	if len(spans) < 10 {
+		t.Errorf("Not enough spans. %d", len(spans))
+	}
+
+	values := []span{
+		{"", "italic"},
+		{"world ", "normal"},
+		{"", "bold"},
+		{"hello", "normal"},
+		{"", "endbold"},
+		{"", "enditalic"},
+		{" ", "normal"},
+		{"world", "img-alt"},
+		{"https://example.com/img.jpg", "img-src"},
+		{" ", "normal"},
+		{"example", "link-txt"},
+		{"https://example.com", "link-url"},
+	}
+
+	if len(values) != len(spans) {
+		t.Error("Spans and values not equal.")
+		return
+	}
+
+	for i, span := range spans {
+		if i >= len(values) {
+			t.Errorf("Spans not found: %s", span)
+			return
+		}
+		if values[i].ttype != span.ttype || values[i].value != span.value {
+			t.Errorf("Spans do not match: %s | %s", span, values[i])
+			return
+		}
 	}
 }

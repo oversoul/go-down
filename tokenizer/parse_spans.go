@@ -6,91 +6,147 @@ const (
 	TextItalic           = "TextItalic"
 )
 
-func findEndingBold(line string, start int, chars string) int {
-	i := start
-	for i < len(line)-1 {
-		if line[i:i+2] == chars {
-			return i
-		}
+type SpanType string
+
+const (
+	Normal SpanType = "Normal"
+	Bold            = "Bold"
+	Italic          = "Italic"
+)
+
+type gap struct {
+	start int
+	end   int
+	ttype string
+}
+
+type span struct {
+	value string
+	ttype string
+}
+
+func last(arr []gap) *gap {
+	return &arr[len(arr)-1]
+}
+
+func parseImage(line string, i int) []gap {
+	i += 1
+	if i >= len(line) || line[i] != '[' {
+		return []gap{}
+	}
+
+	i++
+	alt := gap{i, i, "img-alt"}
+	for i < len(line) && line[i] != ']' {
+		alt.end = i
 		i++
 	}
-	return -1
-}
 
-func findEndingItalic(line string, start int, chars byte) int {
-	i := start
-	for i < len(line) {
-		if line[i] == chars {
-			return i
-		}
+	i++
+	if line[i] != '(' {
+		return []gap{}
+	}
+
+	i++
+	src := gap{i, 0, "img-src"}
+	for i < len(line) && line[i] != ')' {
+		src.end = i
 		i++
 	}
-	return -1
+
+	return []gap{alt, src}
 }
 
-func isBoldSpan(line string, i int) bool {
-	return len(line) >= i+2 && (line[i:i+2] == "**" || line[i:i+2] == "__")
+func parseLink(line string, i int) []gap {
+	i += 1
+
+	txt := gap{i, 0, "link-txt"}
+	for i < len(line) && line[i] != ']' {
+		txt.end = i
+		i++
+	}
+
+	i++
+	if line[i] != '(' {
+		return []gap{}
+	}
+
+	i++
+	url := gap{i, 0, "link-url"}
+	for i < len(line) && line[i] != ')' {
+		url.end = i
+		i++
+	}
+
+	return []gap{txt, url}
 }
 
-func isItalicSpan(line string, i int) bool {
-	return line[i] == '*' || line[i] == '_'
+func addOrCloseGap(gaps *[]gap, ttype string, i int, count int) int {
+	if len(*gaps) > 0 && last(*gaps).ttype == ttype && last(*gaps).end+1 == i {
+		last(*gaps).end += 1
+		return 0
+	}
+
+	if count%2 == 0 {
+		*gaps = append(*gaps, gap{i + 1, i, ttype})
+		return 1
+	}
+
+	*gaps = append(*gaps, gap{i + 1, i, "end" + ttype})
+	return 0
 }
 
-func parseSpans(line string) *Token {
-	token := newToken(Paragraph, "")
+func parseSpans(line string) []span {
 	i := 0
-	lineSize := len(line)
-	normalText := []byte{}
-	for i < lineSize {
+	gaps := []gap{}
+	italics := 0
+	und_bolds := 0
+	star_bolds := 0
 
-		if isBoldSpan(line, i) {
-			end := findEndingBold(line, i+2, line[i:i+2])
-			if end > 0 {
-				if len(normalText) > 0 {
-					token.Children = append(
-						token.Children,
-						newToken(TextNormal, string(normalText)),
-					)
-					normalText = []byte{}
-				}
-				token.Children = append(
-					token.Children,
-					newToken(TextBold, line[i+2:end]),
-				)
-				i += end
+	for i < len(line) {
+		if line[i] == '!' {
+			if img := parseImage(line, i); len(img) > 1 {
+				gaps = append(gaps, img...)
+				i = img[1].end + 2
 				continue
 			}
 		}
-
-		if isItalicSpan(line, i) {
-			end := findEndingItalic(line, i+1, line[i])
-			if end > 0 {
-				if len(normalText) > 0 {
-					token.Children = append(
-						token.Children,
-						newToken(TextNormal, string(normalText)),
-					)
-					normalText = []byte{}
-				}
-				token.Children = append(
-					token.Children,
-					newToken(TextItalic, line[i+1:end]),
-				)
-				i += end
+		if line[i] == '[' {
+			if link := parseLink(line, i); len(link) > 1 {
+				gaps = append(gaps, link...)
+				i = link[1].end + 2
 				continue
 			}
 		}
+		if line[i] == '*' || line[i] == '_' {
+			if i+1 < len(line) && line[i] == '*' && line[i+1] == '*' {
+				star_bolds += addOrCloseGap(&gaps, "bold", i, star_bolds)
+				i += 2
+				continue
+			}
+			if i+1 < len(line) && line[i] == '_' && line[i+1] == '_' {
+				und_bolds += addOrCloseGap(&gaps, "bold", i, und_bolds)
+				i += 2
+				continue
+			}
+			italics += addOrCloseGap(&gaps, "italic", i, italics)
+			i++
+			continue
+		}
 
-		normalText = append(normalText, line[i])
+		if len(gaps) > 0 && last(gaps).ttype == "normal" && last(gaps).end+1 == i {
+			last(gaps).end += 1
+		} else {
+			gaps = append(gaps, gap{i, i, "normal"})
+		}
+
 		i++
 	}
 
-	if len(normalText) > 0 {
-		token.Children = append(
-			token.Children,
-			newToken(TextNormal, string(normalText)),
-		)
+	spans := []span{}
+	for _, gap := range gaps {
+		spans = append(spans, span{value: line[gap.start : gap.end+1], ttype: gap.ttype})
 	}
 
-	return token
+	return spans
 }
