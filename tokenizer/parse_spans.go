@@ -3,15 +3,15 @@ package tokenizer
 const (
 	TextNormal TokenType = "TextNormal"
 	TextBold   TokenType = "TextBold"
-	TextItalic           = "TextItalic"
+	TextItalic TokenType = "TextItalic"
 )
 
 type SpanType string
 
 const (
 	Normal SpanType = "Normal"
-	Bold            = "Bold"
-	Italic          = "Italic"
+	Bold   SpanType = "Bold"
+	Italic SpanType = "Italic"
 )
 
 type gap struct {
@@ -143,9 +143,49 @@ func parseSpans(line string) []span {
 		i++
 	}
 
+	// if it's a special tag
+	// if it's special tag
+	// change normal under it
+	// change everything under
+	// stop when reaching end
+	// if its normal tag
+	// add it
+
+	// spans := []span{}
+	// for _, gap := range gaps {
+	// 	spans = append(
+	// 		spans, span{value: line[gap.start : gap.end+1], ttype: gap.ttype},
+	// 	)
+	// }
+
+	// fmt.Println(gapsToSpans(gaps, 0, line, "normal"))
+
+	return gapsToSpans(gaps, 0, line, "normal")
+}
+
+func gapsToSpans(gaps []gap, i int, line string, ttype string) []span {
 	spans := []span{}
-	for _, gap := range gaps {
-		spans = append(spans, span{value: line[gap.start : gap.end+1], ttype: gap.ttype})
+	for i < len(gaps) {
+		if gaps[i].ttype == "bold" || gaps[i].ttype == "italic" {
+			spans = append(spans, gapsToSpans(gaps, i+1, line, gaps[i].ttype)...)
+			i += 2
+		} else if gaps[i].ttype == "endbold" || gaps[i].ttype == "enditalic" {
+			spans = append(spans, gapsToSpans(gaps, i+1, line, "normal")...)
+		} else {
+			new_ttype := ttype
+			if gaps[i].ttype == "img-src" || gaps[i].ttype == "img-alt" || gaps[i].ttype == "link-txt" || gaps[i].ttype == "link-url" {
+				new_ttype = gaps[i].ttype
+			}
+
+			spans = append(
+				spans,
+				span{
+					value: line[gaps[i].start : gaps[i].end+1],
+					ttype: new_ttype,
+				},
+			)
+		}
+		i++
 	}
 
 	return spans
