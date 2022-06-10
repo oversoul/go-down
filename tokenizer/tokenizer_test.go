@@ -338,67 +338,66 @@ func TestMultipleSpans(t *testing.T) {
 */
 
 func TestSpanSimpleText(t *testing.T) {
-	spans := parseSpans("world")
+	token := parseSpans("world")
 
-	if len(spans) == 0 {
+	if len(token.Children) == 0 {
 		t.Error("Not enough spans.")
 	}
-	if spans[0].ttype != "normal" {
+	if token.Children[0].Ttype != Text {
 		t.Error("Span should be normal type.")
 	}
-	if spans[0].value != "world" {
-		t.Errorf("Span value should be `world` == `%s`.", spans[0].value)
+	if token.Children[0].Value != "world" {
+		t.Errorf("Span value should be `world` == `%s`.", token.Children[0].Value)
 	}
 }
 
 func TestSpanSimpleTextBold(t *testing.T) {
-	spans := parseSpans("world *hello*")
-	if len(spans) < 2 {
-		t.Error("Not enough spans.")
+	token := parseSpans("world *hello*")
+	if len(token.Children) < 2 {
+		t.Error("Not enough token.")
+		return
 	}
-	if spans[0].ttype != "normal" || spans[0].value != "world " {
+	if token.Children[0].Ttype != Text || token.Children[0].Value != "world " {
 		t.Error("Span should be normal type of value world.")
+		return
 	}
-	if spans[1].ttype != "italic" {
+	if token.Children[1].Ttype != Italic {
 		t.Error("Span should be italic")
+		return
 	}
-	if spans[2].ttype != "normal" || spans[2].value != "hello" {
+	if token.Children[2].Ttype != Text || token.Children[2].Value != "hello" {
 		t.Error("Span should be normal with value hello")
+		return
 	}
 }
 
 func TestParseLink(t *testing.T) {
-	spans := parseSpans("[example](https://example.com)")
-	if len(spans) < 2 {
-		t.Errorf("Not enough spans. %d", len(spans))
-	}
-	span := spans[0]
-	if span.ttype != "link-txt" || span.value != "example" {
-		t.Error("Not finding alt text of link.")
+	token := parseSpans("[example](https://example.com)")
+	if len(token.Children) < 1 {
+		t.Errorf("Not enough token. %d", len(token.Children))
 		return
 	}
-	span = spans[1]
-	if span.ttype != "link-url" || span.value != "https://example.com" {
-		t.Error("Not finding url of link.")
+	span := token.Children[0]
+	if span.Ttype != Link || span.Value != "example" {
+		t.Error("Not finding value of link.")
+		return
+	}
+
+	if span.Attrs["url"] != "https://example.com" {
+		t.Error("url not matching.")
 		return
 	}
 }
 
 func TestParseTwoLinks(t *testing.T) {
-	spans := parseSpans("[example](https://example.com)[example](https://example.com)")
-	if len(spans) < 4 {
-		t.Errorf("Not enough spans. %d", len(spans))
+	token := parseSpans("[example](https://example.com)[example](https://example.com)")
+	if len(token.Children) < 2 {
+		t.Errorf("Not enough token. %d", len(token.Children))
+		return
 	}
 
-	values := []span{
-		{"example", "link-txt"},
-		{"https://example.com", "link-url"},
-		{"example", "link-txt"},
-		{"https://example.com", "link-url"},
-	}
-
-	for i, span := range spans {
-		if span.ttype != values[i].ttype || span.value != values[i].value {
+	for _, span := range token.Children {
+		if span.Ttype != Link || span.Value != "example" || span.Attrs["url"] != "https://example.com" {
 			t.Errorf("Span not correct %s", span)
 			return
 		}
@@ -406,103 +405,132 @@ func TestParseTwoLinks(t *testing.T) {
 }
 
 func TestParseTwoLinksWithSpace(t *testing.T) {
-	spans := parseSpans("[example](https://example.com) [example](https://example.com)")
-	if len(spans) < 5 {
-		t.Errorf("Not enough spans. %d", len(spans))
+	token := parseSpans("[example1](https://example.com) [example2](https://example.com)")
+	if len(token.Children) < 3 {
+		t.Errorf("Not enough token. %d", len(token.Children))
+		return
+	}
+	if token.Children[0].Ttype != Link || token.Children[2].Ttype != Link {
+		t.Error("Not links.")
+		return
+	}
+	if token.Children[1].Ttype != Text {
+		t.Error("Not space between links.")
+		return
+	}
+	if token.Children[0].Value != "example1" || token.Children[2].Value != "example2" {
+		t.Error("Not valid text.")
+		return
 	}
 
-	values := []span{
-		{"example", "link-txt"},
-		{"https://example.com", "link-url"},
-		{" ", "normal"},
-		{"example", "link-txt"},
-		{"https://example.com", "link-url"},
-	}
-
-	for i, span := range spans {
-		if span.ttype != values[i].ttype || span.value != values[i].value {
-			t.Errorf("Span not correct %s", span)
-			return
-		}
+	url := "https://example.com"
+	if token.Children[0].Attrs["url"] != url || token.Children[2].Attrs["url"] != url {
+		t.Error("Not valid url.")
+		return
 	}
 }
 
 func TestParseTwoImages(t *testing.T) {
-	spans := parseSpans("![example](https://example.com)![example](https://example.com)")
-	if len(spans) < 4 {
-		t.Errorf("Not enough spans. %d", len(spans))
+	token := parseSpans("![example](https://example.com)![example](https://example.com)")
+	if len(token.Children) < 2 {
+		t.Errorf("Not enough token. %d", len(token.Children))
+		return
 	}
 
-	values := []span{
-		{"example", "img-alt"},
-		{"https://example.com", "img-src"},
-		{"example", "img-alt"},
-		{"https://example.com", "img-src"},
-	}
+	img := newToken(Image, "")
+	img.Attrs["alt"] = "example"
+	img.Attrs["src"] = "https://example.com"
+	imgs := []*Token{img, img}
 
-	for i, span := range spans {
-		if span.ttype != values[i].ttype || span.value != values[i].value {
-			t.Errorf("Span not correct %s", span)
+	for i, span := range token.Children {
+		if span.Ttype != Image {
+			t.Errorf("Span not an image %s", span)
+			return
+		}
+		if span.Attrs["alt"] != imgs[i].Attrs["alt"] {
+			t.Errorf("Span url not correct %s", span)
+			return
+		}
+		if span.Attrs["src"] != imgs[i].Attrs["src"] {
+			t.Errorf("Span src not correct %s", span)
 			return
 		}
 	}
 }
 
 func TestParseTwoImgsWithSpace(t *testing.T) {
-	spans := parseSpans("![example](https://example.com) ![example](https://example.com)")
-	if len(spans) < 5 {
-		t.Errorf("Not enough spans. %d", len(spans))
+	token := parseSpans("![example](https://example.com) ![example](https://example.com)")
+	if len(token.Children) < 3 {
+		t.Errorf("Not enough token.Children. %d", len(token.Children))
+		return
 	}
 
-	values := []span{
-		{"example", "img-alt"},
-		{"https://example.com", "img-src"},
-		{" ", "normal"},
-		{"example", "img-alt"},
-		{"https://example.com", "img-src"},
-	}
+	img := newToken(Image, "")
+	img.Attrs["alt"] = "example"
+	img.Attrs["src"] = "https://example.com"
+	tags := []*Token{img, newToken(Text, " "), img}
 
-	for i, span := range spans {
-		if span.ttype != values[i].ttype || span.value != values[i].value {
-			t.Errorf("Span not correct %s", span)
+	for i, span := range token.Children {
+		if span.Ttype != tags[i].Ttype {
+			t.Errorf("Span not %s", span)
+			return
+		}
+		if span.Attrs["alt"] != tags[i].Attrs["alt"] {
+			t.Errorf("Span url not correct %s", span)
+			return
+		}
+		if span.Attrs["src"] != tags[i].Attrs["src"] {
+			t.Errorf("Span src not correct %s", span)
 			return
 		}
 	}
 }
 
 func TestSpanParseMultipleSpans(t *testing.T) {
-	spans := parseSpans("*world **hello*** ![world](https://example.com/img.jpg) [example](https://example.com)")
-	if len(spans) < 10 {
-		t.Errorf("Not enough spans. %d", len(spans))
+	token := parseSpans("*world **hello*** ![world](https://example.com/img.jpg) [example](https://example.com)")
+	if len(token.Children) < 10 {
+		t.Errorf("Not enough token. %d", len(token.Children))
+		return
 	}
 
-	values := []span{
-		{"", "italic"},
-		{"world ", "normal"},
-		{"", "bold"},
-		{"hello", "normal"},
-		{"", "endbold"},
-		{"", "enditalic"},
-		{" ", "normal"},
-		{"world", "img-alt"},
-		{"https://example.com/img.jpg", "img-src"},
-		{" ", "normal"},
-		{"example", "link-txt"},
-		{"https://example.com", "link-url"},
+	img := newToken(Image, "")
+	img.Attrs["alt"] = "world"
+	img.Attrs["src"] = "https://example.com/img.jpg"
+	link := newToken(Link, "example")
+	link.Attrs["url"] = "https://example.com"
+	tags := []*Token{
+		newToken(Italic, ""),
+		newToken(Text, "world "),
+		newToken(Bold, ""),
+		newToken(Text, "hello"),
+		newToken(EndBold, ""),
+		newToken(EndItalic, ""),
+		newToken(Text, " "),
+		img,
+		newToken(Text, " "),
+		link,
 	}
 
-	if len(values) != len(spans) {
+	if len(tags) != len(token.Children) {
 		t.Error("Spans and values not equal.")
 		return
 	}
 
-	for i, span := range spans {
-		if i >= len(values) {
-			t.Errorf("Spans not found: %s", span)
+	for i, span := range token.Children {
+		if span.Ttype != tags[i].Ttype {
+			t.Errorf("Span not %s", span)
 			return
 		}
-		if values[i].ttype != span.ttype || values[i].value != span.value {
-			t.Errorf("Spans do not match: %s | %s", span, values[i])
+		if span.Value != tags[i].Value {
+			t.Errorf("Span value not correct %s", span)
+			return
+		}
+		if span.Attrs["alt"] != tags[i].Attrs["alt"] {
+			t.Errorf("Span url not correct %s", span)
+			return
+		}
+		if span.Attrs["src"] != tags[i].Attrs["src"] {
+			t.Errorf("Span src not correct %s", span)
 			return
 		}
 	}

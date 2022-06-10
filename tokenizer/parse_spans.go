@@ -1,17 +1,13 @@
 package tokenizer
 
 const (
-	TextNormal TokenType = "TextNormal"
-	TextBold   TokenType = "TextBold"
-	TextItalic TokenType = "TextItalic"
-)
-
-type SpanType string
-
-const (
-	Normal SpanType = "Normal"
-	Bold   SpanType = "Bold"
-	Italic SpanType = "Italic"
+	Text      TokenType = "Text"
+	Bold      TokenType = "Bold"
+	EndBold   TokenType = "EndBold"
+	Italic    TokenType = "Italic"
+	EndItalic TokenType = "EndItalic"
+	Link      TokenType = "Link"
+	Image     TokenType = "Image"
 )
 
 type gap struct {
@@ -96,7 +92,7 @@ func addOrCloseGap(gaps *[]gap, ttype string, i int, count int) int {
 	return 0
 }
 
-func parseSpans(line string) []span {
+func parseGaps(line string) []gap {
 	i := 0
 	gaps := []gap{}
 	italics := 0
@@ -143,12 +139,45 @@ func parseSpans(line string) []span {
 		i++
 	}
 
-	spans := []span{}
-	for _, gap := range gaps {
-		spans = append(
-			spans, span{value: line[gap.start : gap.end+1], ttype: gap.ttype},
-		)
+	return gaps
+}
+
+func parseSpans(line string) *Token {
+	gaps := parseGaps(line)
+
+	translator := map[string]TokenType{
+		"normal":    Text,
+		"bold":      Bold,
+		"endbold":   EndBold,
+		"italic":    Italic,
+		"enditalic": EndItalic,
 	}
 
-	return spans
+	token := newToken(Text, "")
+
+	i := 0
+	for i < len(gaps) {
+		if gaps[i].ttype == "img-alt" {
+			newToken := newToken(Image, "")
+			newToken.Attrs["alt"] = line[gaps[i].start : gaps[i].end+1]
+			newToken.Attrs["src"] = line[gaps[i+1].start : gaps[i+1].end+1]
+			token.Children = append(token.Children, newToken)
+			i += 2
+			continue
+		}
+		if gaps[i].ttype == "link-txt" {
+			newToken := newToken(Link, line[gaps[i].start:gaps[i].end+1])
+			newToken.Attrs["url"] = line[gaps[i+1].start : gaps[i+1].end+1]
+			token.Children = append(token.Children, newToken)
+			i += 2
+			continue
+		}
+		ttype, _ := translator[gaps[i].ttype]
+		token.Children = append(
+			token.Children, newToken(ttype, line[gaps[i].start:gaps[i].end+1]),
+		)
+		i++
+	}
+
+	return token
 }
