@@ -223,17 +223,31 @@ func TestOrderedList(t *testing.T) {
 
 	if len(tokens) < 1 {
 		t.Error("Not enough tokens")
+		return
 	}
 	if !tokenValid(tokens[0], OrderedList, "") {
 		t.Error("Not valid OrderedList")
+		return
 	}
 	item := tokens[0].Children[0]
-	if item.Value != "First item" || item.Attrs["id"] != 1 {
-		t.Errorf("Not valid item. `%s`", item.Value)
+	if item.Value != "" || item.Attrs["id"] != 1 {
+		t.Errorf("Not valid item. `%+v`\n", item.Children[0])
+		return
+	}
+	item = item.Children[0]
+	if item.Value != "First item" || item.Ttype != Text {
+		t.Errorf("Not valid item. `%+v`\n", item)
+		return
 	}
 	item = tokens[0].Children[1]
-	if item.Value != "Second item" || item.Attrs["id"] != 2 {
-		t.Errorf("Not valid item. `%s`", item.Value)
+	if item.Value != "" || item.Attrs["id"] != 2 {
+		t.Errorf("Not valid item. `%+v`\n", item)
+		return
+	}
+	item = item.Children[0]
+	if item.Value != "Second item" || item.Ttype != Text {
+		t.Errorf("Not valid item. `%+v`\n", item)
+		return
 	}
 }
 

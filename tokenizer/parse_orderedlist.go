@@ -7,7 +7,7 @@ import (
 
 const (
 	OrderedList     TokenType = "OrderedList"
-	OrderedListItem           = "OrderedListItem"
+	OrderedListItem TokenType = "OrderedListItem"
 )
 
 func parseOrderedList(lines []string, index int) ([]*Token, int) {
@@ -31,7 +31,8 @@ func parseOrderedList(lines []string, index int) ([]*Token, int) {
 			break
 		}
 
-		token := newToken(OrderedListItem, slices[1])
+		token := newToken(OrderedListItem, "")
+		token.Children = parseSpans(slices[1])
 		token.Attrs["id"] = skip + 1
 
 		current.Children = append(current.Children, token)
