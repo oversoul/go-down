@@ -70,7 +70,9 @@ func parseParagraph(lines []string, index int) ([]*Token, int) {
 	if isEmpty(lines[index]) {
 		return nil, 0
 	}
-	return []*Token{newToken(Paragraph, lines[index])}, 1
+	paragraph := newToken(Paragraph, "")
+	paragraph.Children = parseSpans(lines[index])
+	return []*Token{paragraph}, 1
 }
 
 func (p *parser) Tokenize() []*Token {

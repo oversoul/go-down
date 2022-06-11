@@ -142,7 +142,7 @@ func parseGaps(line string) []gap {
 	return gaps
 }
 
-func parseSpans(line string) *Token {
+func parseSpans(line string) []*Token {
 	gaps := parseGaps(line)
 
 	translator := map[string]TokenType{
@@ -153,7 +153,7 @@ func parseSpans(line string) *Token {
 		"enditalic": EndItalic,
 	}
 
-	token := newToken(Text, "")
+	tokens := []*Token{}
 
 	i := 0
 	for i < len(gaps) {
@@ -161,23 +161,21 @@ func parseSpans(line string) *Token {
 			newToken := newToken(Image, "")
 			newToken.Attrs["alt"] = line[gaps[i].start : gaps[i].end+1]
 			newToken.Attrs["src"] = line[gaps[i+1].start : gaps[i+1].end+1]
-			token.Children = append(token.Children, newToken)
+			tokens = append(tokens, newToken)
 			i += 2
 			continue
 		}
 		if gaps[i].ttype == "link-txt" {
 			newToken := newToken(Link, line[gaps[i].start:gaps[i].end+1])
 			newToken.Attrs["url"] = line[gaps[i+1].start : gaps[i+1].end+1]
-			token.Children = append(token.Children, newToken)
+			tokens = append(tokens, newToken)
 			i += 2
 			continue
 		}
 		ttype, _ := translator[gaps[i].ttype]
-		token.Children = append(
-			token.Children, newToken(ttype, line[gaps[i].start:gaps[i].end+1]),
-		)
+		tokens = append(tokens, newToken(ttype, line[gaps[i].start:gaps[i].end+1]))
 		i++
 	}
 
-	return token
+	return tokens
 }
